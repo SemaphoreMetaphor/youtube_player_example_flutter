@@ -163,6 +163,8 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   updateProgressListener() {
-    widget.onProgress(currentOffset.dy / bottomOffset.dy);
+    if (widget.onProgress != null) {
+      widget.onProgress(currentOffset.dy / bottomOffset.dy);
+    }
   }
 }
