@@ -1,4 +1,5 @@
-import 'dart:developer' as developer;
+import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -9,6 +10,9 @@ class VideoScreen extends StatefulWidget {
 
 class _VideoScreenState extends State<VideoScreen>
     with TickerProviderStateMixin {
+  final FINAL_SCALE = 0.35;
+  final double MINIMIZED_PADDING = 10;
+
   AnimationController translateController;
   Animation<Offset> translateAnimation;
 
@@ -31,6 +35,9 @@ class _VideoScreenState extends State<VideoScreen>
   var bottomOffset = Offset(0.0, 0.0);
 
   var isFromBottom = false;
+  var currentScale = 1.0;
+  var currentLeftPadding = 0.0;
+  var detailOpacity = 1.0;
 
   @override
   void initState() {
@@ -51,50 +58,84 @@ class _VideoScreenState extends State<VideoScreen>
       bottomScreenY = screenHeight - currentVideoHeight;
       maxVideoWidth = constraints.biggest.width;
       currentVideoWidth = maxVideoWidth;
-      bottomOffset = Offset(0.0, screenHeight - currentVideoHeight);
+      bottomOffset =
+          Offset(0.0, screenHeight - currentVideoHeight - MINIMIZED_PADDING);
       return Column(
         children: <Widget>[
           Container(
             child: Transform.translate(
               offset: currentOffset,
-              child: GestureDetector(
-                child: Container(
-                  width: currentVideoWidth,
-                  height: currentVideoHeight,
-                  color: Colors.blue,
-                ),
-                onVerticalDragDown: (detail) {
-                  setState(() {
-                    startOffset = Offset(0.0, detail.globalPosition.dy);
-                  });
-                },
-                onVerticalDragUpdate: (detail) {
-                  setState(() {
-                    currentOffset = getCurrentOffset(detail.globalPosition.dy);
-                  });
-                },
-                onVerticalDragEnd: (detail) {
-                  translateController = AnimationController(
-                      duration: Duration(milliseconds: 200), vsync: this)
-                    ..addListener(() {
-                      setState(() {
-                        currentOffset = translateAnimation.value;
-                      });
-                    });
-                  if (currentOffset.dy > (bottomOffset.dy / 2)) {
-                    minimize();
-                    isFromBottom = true;
-                  } else {
-                    isFromBottom = false;
-                    maximize();
-                  }
-                  translateController.forward();
-                },
-              ),
+              child: Transform.scale(
+                  scale: currentScale,
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: currentLeftPadding),
+                    child: GestureDetector(
+                      child: Container(
+                        width: currentVideoWidth,
+                        height: currentVideoHeight,
+                        color: Colors.blue,
+                      ),
+                      onVerticalDragDown: (detail) {
+                        setState(() {
+                          startOffset = Offset(0.0, detail.globalPosition.dy);
+                        });
+                      },
+                      onVerticalDragUpdate: (detail) {
+                        setState(() {
+                          currentOffset =
+                              getCurrentOffset(detail.globalPosition.dy);
+                          currentScale = max(FINAL_SCALE,
+                              (1 - (currentOffset.dy / bottomOffset.dy)));
+                          currentLeftPadding = max(
+                              0,
+                              (MINIMIZED_PADDING * ui.window.devicePixelRatio) *
+                                  (currentOffset.dy / bottomOffset.dy));
+                          detailOpacity = (1 - (currentOffset.dy / bottomOffset.dy));
+                        });
+                      },
+                      onVerticalDragEnd: (detail) {
+                        translateController = AnimationController(
+                            duration: Duration(milliseconds: 200), vsync: this)
+                          ..addListener(() {
+                            setState(() {
+                              currentOffset = translateAnimation.value;
+                              currentScale = max(FINAL_SCALE,
+                                  (1 - (currentOffset.dy / bottomOffset.dy)));
+                              currentLeftPadding = max(
+                                  0,
+                                  (MINIMIZED_PADDING *
+                                          ui.window.devicePixelRatio) *
+                                      (currentOffset.dy / bottomOffset.dy));
+                              detailOpacity = (1 - (currentOffset.dy / bottomOffset.dy));
+                            });
+                          });
+                        if (currentOffset.dy > (bottomOffset.dy / 2)) {
+                          minimize();
+                          isFromBottom = true;
+                        } else {
+                          isFromBottom = false;
+                          maximize();
+                        }
+                        translateController.forward();
+                      },
+                    ),
+                  )),
             ),
           ),
           Expanded(
-            child: Container(),
+            child: Transform.translate(
+              offset: currentOffset,
+              child: Opacity(
+                opacity: detailOpacity,
+                child: Padding(
+                  padding: EdgeInsets.only(top: currentLeftPadding),
+                  child: Container(
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ),
           )
         ],
       );
@@ -108,7 +149,6 @@ class _VideoScreenState extends State<VideoScreen>
     } else {
       updatedOffset = Offset(0.0, dy) - startOffset;
     }
-
 
     if (updatedOffset.dy < 0) {
       updatedOffset = Offset.zero;
