@@ -4,6 +4,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 class VideoScreen extends StatefulWidget {
+
+  VideoScreen({this.onProgress});
+
+  final Function(double) onProgress;
+
   @override
   State<StatefulWidget> createState() => _VideoScreenState();
 }
@@ -30,6 +35,13 @@ class _VideoScreenState extends State<VideoScreen>
   var currentScale = 1.0;
   var currentLeftPadding = 0.0;
   var detailOpacity = 1.0;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    updateProgressListener();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,5 +159,10 @@ class _VideoScreenState extends State<VideoScreen>
               (currentOffset.dy / bottomOffset.dy));
       detailOpacity = (1 - (currentOffset.dy / bottomOffset.dy));
     });
+    updateProgressListener();
+  }
+
+  updateProgressListener() {
+    widget.onProgress(currentOffset.dy / bottomOffset.dy);
   }
 }
